@@ -22,7 +22,19 @@ aws_session = boto3.Session(
 ec2_client = aws_session.client('ec2')
 
 
+'''
+Plan of action
 
+Create VPC  ( dont' create if it already exists just pull it and return )
+Create Subnet ( hopefully don't create if it already exists just pull it and return )
+Create internet gateway
+create route table
+
+put the route table with the subnet
+
+launch aws t2.micro instance. 
+
+'''
 
 #This could be async, synchronous multithread, or multiprocess. Totally Up to you!
 # This information needs to be serializable
@@ -46,3 +58,17 @@ async def create_subnet(vpc_id):
     subnet_id = response['Subnet']['SubnetId']
     ec2_client.create_tags(Resources=[subnet_id], Tags=[{'Key': 'Name', 'Value': 'Temporal_Subnet'}])
     return subnet_id
+
+@activity.defn
+async def create_internet_gateway(vpc_id):
+    response = ec2_client.create_internet_gateway()
+    internet_gateway_id = response['InternetGateway']['InternetGatewayId']
+    ec2_client.attach_internet_gateway(InternetGatewayId=internet_gateway_id, VpcId=vpc_id)
+    return internet_gateway_id
+
+@activity.defn
+async def create_route_table(vpc_id, internet_gateway_id):
+    response = ec2_client.create_route_table(VpcId=vpc_id)
+    route_table_id = response['RouteTable']['RouteTableId']
+    ec2_client.create_route(RouteTableId=route_table_id, DestinationCidrBlock='0.0.0.0/0', GatewayId=internet_gateway_id)
+    return route_table_id
