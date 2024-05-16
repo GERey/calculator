@@ -5,7 +5,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
-    from activities.aws_activity import create_vpc
+    from activities.aws_activity import create_vpc,create_subnet
 
 
 @workflow.defn
@@ -21,7 +21,8 @@ class SETUP_AWS:
         )
 
         vpc_id = await workflow.execute_activity(create_vpc, schedule_to_close_timeout=timedelta(minutes=5) ,retry_policy=retry_policy)
-        return vpc_id
+        subnet_id = await workflow.execute_activity(create_subnet,vpc_id ,schedule_to_close_timeout=timedelta(minutes=5) ,retry_policy=retry_policy)
+        return subnet_id
 
 # @workflow.defn
 # class DESTROY_AWS:
