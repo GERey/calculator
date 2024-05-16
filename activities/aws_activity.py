@@ -9,7 +9,7 @@ load_dotenv()
 AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REGION = os.getenv('AWS_REGION')
-SECURITY_GROUP_ID = os.getenv('SECURITY_GROUP_ID')
+SECURITY_GROUP_NAME = os.getenv('SECURITY_GROUP_NAME')
 KEY_PAIR_NAME = os.getenv('KEY_PAIR_NAME')
 AMI_ID = os.getenv('AMI_ID')
 
@@ -25,10 +25,12 @@ ec2_client = aws_session.client('ec2')
 '''
 Plan of action
 
-Create VPC  ( dont' create if it already exists just pull it and return )
-Create Subnet ( hopefully don't create if it already exists just pull it and return )
-Create internet gateway
-create route table
+Create VPC x  (Do this for extra credit maybe?  dont' create if it already exists just pull it and return )
+Create Subnet x ( Do this for extra credit maybe? hopefully don't create if it already exists just pull it and return )
+Create internet gateway x
+create route table x
+
+create security groups oops 
 
 put the route table with the subnet
 
@@ -67,8 +69,50 @@ async def create_internet_gateway(vpc_id):
     return internet_gateway_id
 
 @activity.defn
-async def create_route_table(vpc_id, internet_gateway_id):
-    response = ec2_client.create_route_table(VpcId=vpc_id)
+async def create_route_table(awsIds):
+    response = ec2_client.create_route_table(VpcId=awsIds[0])
     route_table_id = response['RouteTable']['RouteTableId']
-    ec2_client.create_route(RouteTableId=route_table_id, DestinationCidrBlock='0.0.0.0/0', GatewayId=internet_gateway_id)
+    ec2_client.create_route(RouteTableId=route_table_id, DestinationCidrBlock='0.0.0.0/0', GatewayId=awsIds[1])
     return route_table_id
+
+@activity.defn
+async def associate_route_table(awsIds):
+    ec2_client.associate_route_table(RouteTableId=awsIds[0], SubnetId= awsIds[1])
+
+@activity.defn
+async def create_security_group(vpc_id):
+    response = ec2_client.create_security_group(
+        GroupName=SECURITY_GROUP_NAME,
+        Description='Temporal Created Security group',
+        VpcId=vpc_id
+    )
+    security_group_id = response['GroupId']
+    
+    # Add an inbound rule only allowing my ip to ssh into the box.
+    ec2_client.authorize_security_group_ingress(
+        GroupId=security_group_id,
+        IpPermissions=[{
+            'IpProtocol': 'tcp',
+            'FromPort': 22,
+            'ToPort': 22,
+            'IpRanges': [{'CidrIp': '104.28.124.166/32'}]
+        }]
+    )
+    return security_group_id
+
+
+@activity.defn
+async def launch_instances(awsIds):
+    networkInterfaces=[{
+        'SubnetId': awsIds[0],  #subnet
+        'DeviceIndex': 0,
+        'AssociatePublicIpAddress': True,
+        'Groups': [awsIds[1]]  #security groud id 
+    }]
+
+
+    response = ec2_client.run_instances(ImageId=AMI_ID,InstanceType='t2.micro',KeyName=KEY_PAIR_NAME, MaxCount=1,MinCount=1,NetworkInterfaces=networkInterfaces)
+
+    instance_id = response['Instances'][0]['InstanceId']
+    ec2_client.create_tags(Resources=[instance_id], Tags=[{'Key': 'Name', 'Value': 'Temporal Instance'}])
+    return instance_id
