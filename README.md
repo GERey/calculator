@@ -54,8 +54,14 @@ This felt generally straight forward, although I needed to set the retry's to 1 
 #TODO:
 
 There are a few things I'll do in the coming days before the interview. 
-1.) Clean up the git workflows 
-2.) I'll try to work in some more distributed system concepts like 
+1.) Clean up the project
+2.) Complete this readme
+
+I spent a lot of project time implementing and getting my head around temporal, and if I had more time I would look into the below. 
+
+1.) I'll try to work in some more distributed system concepts like 
   - Timers for the the times I'm waiting for instances to come up
-  - 
+  - Adding tests, I did play with those in other projects that I forked and they looked really helpful.
+  - Signals and Versioning.
+  - Automatic rollback if a workflow fails
 
